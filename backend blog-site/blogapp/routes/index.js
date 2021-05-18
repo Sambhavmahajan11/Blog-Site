@@ -8,6 +8,8 @@ var nodemailer = require("nodemailer");
 // web token module
 var jwt = require("jsonwebtoken");
 
+
+
 // for dynamic showing of data
 const moment = require("moment");
 const blogmodel = require("../modules/blog");
@@ -16,8 +18,12 @@ const blogmodel = require("../modules/blog");
 async function checkLoginuser(req, res, next) {
     var usertoken = await localStorage.getItem("usertoken");
     try {
-        var decoded = await jwt.verify(usertoken, "logintoken");
-    } catch (err) {
+        if(req.session.userID){
+        var decoded = await jwt.verify(usertoken, "logintoken");}else{
+            res.redirect("/login");
+        }
+    } 
+    catch (err) {
         res.redirect("/login");
     }
     next();
@@ -128,18 +134,14 @@ router.get("/edit/:id", checkLoginuser, function (req, res, next) {
 router.get("/signup", function (req, res, next) {
     res.render("signup", { title: "Express", msg: "" });
 });
-// router.get("/search", function (req, res, next) {
-//   res.render("search", { title: "Express", msg: "" });
-// });
-router.get("/logout", function (req, res, next) {
-    res.render("logout", {});
-});
+
+
 
 router.get("/submission", checkLoginuser, async function (req, res, next) {
-    var usertoken = localStorage.getItem("loginuser");
+    // var usertoken = localStorage.getItem("loginuser");
     res.render("submission", {
         title: "Submission",
-        userdetails: usertoken,
+        userdetails: req.session.userID,
         msg: "",
     });
 });
@@ -147,24 +149,24 @@ router.get("/submission", checkLoginuser, async function (req, res, next) {
 // delete method for deleting our blog
 router.get("/delete/:id", checkLoginuser, async function (req, res, next) {
     console.log(req.params.id);
-    var usertoken = localStorage.getItem("loginuser");
+    // var usertoken = localStorage.getItem("loginuser");
     await blogModule.findByIdAndDelete(req.params.id);
     res.render("submission", {
         title: "Submission",
-        userdetails: usertoken,
+        userdetails: req.session.userID,
         msg: "Blog deleted",
     });
 });
 //change method
 router.get("/change/:id", checkLoginuser, async function (req, res, next) {
     console.log(req.params.id);
-    var usertoken = localStorage.getItem("loginuser");
+    // var usertoken = localStorage.getItem("loginuser");
     var change = blogModule.findById(req.params.id);
     change.exec((err, data) => {
         if (err) throw err;
         res.render("edit", {
             title: "Submission",
-            userdetails: usertoken,
+            userdetails: req.session.userID,
             msg: "Edit your blog",
             records: data,
         });
@@ -229,6 +231,8 @@ router.post("/login", checkuserexist, function (req, res, next) {
             // storing token in local storage
             localStorage.setItem("usertoken", token);
             localStorage.setItem("loginuser", loginuser);
+            req.session.userID=loginuser;
+            
 
             res.redirect("/submission");
         } else {
@@ -311,8 +315,15 @@ router.post("/mailer", function (req, res, next) {
 
 // logout method
 router.post("/logout", function (req, res, next) {
-    localStorage.removeItem("usertoken");
-    localStorage.removeItem("loginuser");
+    req.session.destroy(function(err) {
+        // cannot access session here
+        if(err){
+            res.redirect('/');
+        }
+      })
+
+    
+
     res.render("login", {
         title: "Login Page",
         msg: "Login To submit blog",

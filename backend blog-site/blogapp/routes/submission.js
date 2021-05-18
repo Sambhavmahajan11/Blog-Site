@@ -11,11 +11,15 @@ var path = require("path");
 router.use(express.static(__dirname + "./public"));
 
 // checking user is login or not in a function
-function checkLoginuser(req, res, next) {
-    var usertoken = localStorage.getItem("usertoken");
+async function checkLoginuser(req, res, next) {
+    var usertoken = await localStorage.getItem("usertoken");
     try {
-        var decoded = jwt.verify(usertoken, "logintoken");
-    } catch (err) {
+        if(req.session.userID){
+        var decoded = await jwt.verify(usertoken, "logintoken");}else{
+            res.redirect("/login");
+        }
+    } 
+    catch (err) {
         res.redirect("/login");
     }
     next();
@@ -39,8 +43,8 @@ var upload = multer({ storage: Storage }).single("file");
 var blogshow = blogModule.find({});
 
 router.post("/submission", upload, (req, res) => {
-    var usertoken = localStorage.getItem("loginuser");
-    var author = usertoken;
+    // var usertoken = localStorage.getItem("loginuser");
+    var author = req.session.userID;
     var title = req.body.Blog_title;
     var desc = req.body.Blog_desc;
     var content = req.body.Blog_content;
@@ -65,12 +69,12 @@ router.post("/submission", upload, (req, res) => {
 });
 
 router.post("/amend/:id", upload, async function (req, res, next) {
-    var author = usertoken;
+    var author =req.session.userID;
     var title = req.body.Blog_title;
     var desc = req.body.Blog_desc;
     var content = req.body.Blog_content;
     // console.log(content);
-    var usertoken = localStorage.getItem("loginuser");
+    // var usertoken = localStorage.getItem("loginuser");
     // console.log("this is image"+ req.body.updateimage);
     if (req.body.updateimage == 1) {
         var image = req.file.filename;
@@ -91,7 +95,7 @@ router.post("/amend/:id", upload, async function (req, res, next) {
         res.render("submission", {
             title: "Submission",
             msg: "Blog edited succesfully",
-            userdetails: usertoken,
+            userdetails:req.session.userID,
         });
         // var update = blogModule.findByIdAndUpdate(
         //     req.params.id,
